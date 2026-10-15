@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="hi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#087f5b">
+<title>जन पोल | ग्राम पंचायत</title>
+<style>
+:root{--green:#087f5b;--mint:#e8fbf4;--line:#e7edf0;--text:#17212b;--muted:#64748b}
+*{box-sizing:border-box}body{margin:0;background:#f5f7f8;color:var(--text);font-family:Arial,"Noto Sans Devanagari",sans-serif}
+.wrap{max-width:720px;margin:auto;background:#fff;min-height:100vh;padding:22px 16px 36px}
+.eyebrow{font-size:13px;color:var(--green);font-weight:700;margin-bottom:8px}
+h1{font-size:25px;line-height:1.35;margin:0 0 18px}
+.note,.panel{border:1px solid #c9f0e1;background:var(--mint);border-radius:16px;padding:15px;margin:14px 0;text-align:center}
+.panel{background:#fff;border-color:var(--line);text-align:left}
+.small{font-size:13px;color:var(--muted);line-height:1.55}
+label{display:block;font-weight:700;font-size:14px;margin:10px 0 6px}
+input{width:100%;padding:13px;border:1px solid #cbd5e1;border-radius:10px;font:inherit;background:#fff}
+button{border:0;border-radius:12px;padding:13px 15px;font:inherit;font-weight:700;cursor:pointer}
+button:disabled{opacity:.55;cursor:not-allowed}
+.primary{background:var(--green);color:white;width:100%}.secondary{background:#e9f8f1;color:var(--green);border:1px solid #b8ead8}
+.row{display:flex;gap:9px}.row>*{flex:1;min-width:0}
+.candidate{border:1px solid var(--line);border-radius:14px;padding:13px;margin:10px 0;display:flex;align-items:center;gap:10px}
+.candidate input{width:18px;height:18px;flex:0 0 auto;accent-color:var(--green)}
+.cname{font-weight:700;flex:1}.tag{font-size:12px;color:var(--muted)}
+.results{margin-top:20px}.result{border:1px solid var(--line);border-radius:14px;padding:13px;margin:10px 0}
+.rtop{display:flex;justify-content:space-between;gap:10px;font-size:14px;font-weight:700}
+.track{height:10px;background:#e7edf4;border-radius:99px;overflow:hidden;margin-top:10px}.bar{height:100%;border-radius:99px}
+.chartwrap{display:flex;justify-content:center;align-items:center;margin:16px 0}
+.donut{width:190px;height:190px;border-radius:50%;position:relative}
+.donut:after{content:"";position:absolute;inset:30%;border-radius:50%;background:white}
+.donutlabel{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:1;font-weight:700;font-size:14px}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:12px}.actions button{width:100%}
+.status{font-size:13px;margin-top:10px;min-height:18px;color:var(--green)}
+.hidden{display:none!important}
+footer{margin-top:25px;text-align:center;color:var(--muted);font-size:12px;line-height:1.5}
+@media(max-width:420px){h1{font-size:22px}.wrap{padding:18px 12px}.actions{grid-template-columns:1fr}.row{flex-direction:column}}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <div class="eyebrow">आपकी राय महत्वपूर्ण है</div>
+  <h1 id="pollTitle">ग्राम पंचायत जन पोल</h1>
+  <div class="note"><strong>अपनी पसंद के प्रत्याशी को वोट दें</strong><div class="small">यह अनौपचारिक जनमत सर्वेक्षण है, आधिकारिक चुनावी मतदान नहीं।</div></div>
+
+  <section class="panel" id="setupPanel">
+    <strong>वेबसाइट सेटअप</strong>
+    <p class="small">पहली बार चलाने से पहले README में बताए गए Supabase Project URL और Publishable/Anon Key यहाँ भरें। ये जानकारी इसी ब्राउज़र में सेव होगी।</p>
+    <label for="projectUrl">Supabase Project URL</label>
+    <input id="projectUrl" placeholder="https://xxxxxxxx.supabase.co" autocomplete="url">
+    <label for="publicKey">Supabase Publishable / anon key</label>
+    <input id="publicKey" placeholder="sb_publishable_... या पुरानी anon key" autocomplete="off">
+    <div style="height:10px"></div>
+    <button class="primary" id="saveConfig">कनेक्ट करें</button>
+    <div class="status" id="configStatus"></div>
+  </section>
+
+  <section id="app" class="hidden">
+    <div class="panel">
+      <strong>📱 मोबाइल OTP सत्यापन</strong>
+      <p class="small">भारत का नंबर +91 सहित डालें। OTP SMS तभी आएगा जब Supabase में SMS provider सेट किया गया हो।</p>
+      <label for="phone">मोबाइल नंबर</label>
+      <input id="phone" type="tel" inputmode="tel" placeholder="+919876543210" autocomplete="tel">
+      <div class="row" style="margin-top:9px"><button class="secondary" id="sendOtp">OTP भेजें</button><button class="secondary" id="signOut">लॉग आउट</button></div>
+      <label for="otp">SMS से मिला OTP</label>
+      <input id="otp" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="OTP दर्ज करें">
+      <button class="primary" id="verifyOtp" style="margin-top:9px">OTP सत्यापित करें</button>
+      <div class="status" id="authStatus" aria-live="polite"></div>
+    </div>
+
+    <section id="votePanel" class="panel hidden">
+      <strong>🗳️ अपना वोट डालें</strong>
+      <p class="small">एक सत्यापित खाते से केवल एक वोट स्वीकार होगा। वोट डालने के बाद उसे बदला नहीं जा सकेगा।</p>
+      <div id="candidates"></div>
+      <button class="primary" id="castVote">चुने हुए प्रत्याशी को वोट दें</button>
+      <div class="status" id="voteStatus" aria-live="polite"></div>
+    </section>
+
+    <section class="results">
+      <div class="panel" style="text-align:center;background:#e8fbf4;border-color:#c9f0e1">
+        <strong>☑️ परिणाम और आंकड़े</strong>
+        <div id="totalVotes" style="margin-top:6px">कुल वोट: —</div>
+      </div>
+      <div class="chartwrap"><div class="donut" id="donut"><div class="donutlabel"><span id="donutTotal">0</span><span class="small">कुल वोट</span></div></div></div>
+      <div id="resultsList"></div>
+      <p class="small">परिणाम समय-समय पर अपडेट होते हैं। किसी व्यक्ति की पहचान या उसका चुना हुआ प्रत्याशी सार्वजनिक नहीं दिखाया जाता।</p>
+    </section>
+    <div class="panel" style="background:#e8fbf4;border-color:#9de5ce;text-align:center">
+      <strong>📣 इस पोल को दोस्तों और गाँव के समूह में शेयर करें</strong>
+      <div class="actions">
+        <button class="primary" id="shareWhatsApp">WhatsApp पर भेजें</button>
+        <button class="secondary" id="copyLink">🔗 लिंक कॉपी करें</button>
+      </div>
+      <div class="status" id="shareStatus"></div>
+    </div>
+  </section>
+  <footer>यह जनमत सर्वेक्षण है, सरकारी/आधिकारिक मतदान प्रणाली नहीं। किसी भी वास्तविक चुनाव के लिए इसका उपयोग आधिकारिक वोटिंग के विकल्प के रूप में न करें।</footer>
+</main>
+<script type="module">
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const $ = id => document.getElementById(id);
+const colors = ["#00b889","#f59e0b","#2583e9","#ef4444"];
+let supabase = null, currentUser = null, selectedCandidate = null, candidateRows = [];
+
+function status(id, msg, bad=false){ const el=$(id); el.textContent=msg; el.style.color=bad?"#b42318":"#087f5b"; }
+function savedConfig(){return {url:localStorage.getItem("poll_supabase_url")||"",key:localStorage.getItem("poll_supabase_key")||""};}
+function connect(url,key){
+  if(!url.startsWith("https://") || !key.trim()) throw new Error("सही Project URL और Publishable/anon key भरें।");
+  supabase=createClient(url.trim(),key.trim());
+  localStorage.setItem("poll_supabase_url",url.trim()); localStorage.setItem("poll_supabase_key",key.trim());
+  $("app").classList.remove("hidden"); $("setupPanel").classList.add("hidden");
+  loadCandidates(); refreshResults(); restoreSession();
+}
+async function restoreSession(){
+  const {data}=await supabase.auth.getSession();
+  if(data.session){currentUser=data.session.user; status("authStatus","लॉगिन है: "+(currentUser.phone||"सत्यापित खाता")); await checkVoteState();}
+}
+async function loadCandidates(){
+  const {data,error}=await supabase.from("candidates").select("id,name,display_order").eq("active",true).order("display_order");
+  if(error){status("configStatus","डेटाबेस से प्रत्याशी नहीं पढ़ पाए: "+error.message,true);return;}
+  candidateRows=data||[];
+  $("candidates").innerHTML="";
+  candidateRows.forEach((c,i)=>{
+    const label=document.createElement("label"); label.className="candidate";
+    const radio=document.createElement("input");radio.type="radio";radio.name="candidate";radio.value=c.id;
+    radio.addEventListener("change",()=>selectedCandidate=c.id);
+    const name=document.createElement("span");name.className="cname";name.textContent=c.name;
+    const tag=document.createElement("span");tag.className="tag";tag.textContent="प्रत्याशी "+(i+1);
+    label.append(radio,name,tag);$("candidates").append(label);
+  });
+}
+async function refreshResults(){
+  if(!supabase)return;
+  const {data,error}=await supabase.rpc("get_poll_results");
+  if(error){status("voteStatus","परिणाम लोड नहीं हुए। SQL सेटअप पूरा है या नहीं जाँचें।",true);return;}
+  const rows=data||[];const total=rows.reduce((sum,r)=>sum+Number(r.vote_count||0),0);
+  $("totalVotes").textContent="कुल वोट: "+total;$("donutTotal").textContent=total;
+  let start=0;const segments=[];
+  rows.forEach((r,i)=>{const pct=total?Number(r.vote_count)*100/total:0;const end=start+pct;segments.push(`${colors[i%4]} ${start}% ${end}%`);start=end;});
+  $("donut").style.background=total?`conic-gradient(${segments.join(",")})`:"#e7edf4";
+  $("resultsList").innerHTML="";
+  rows.forEach((r,i)=>{
+    const pct=total?(Number(r.vote_count)*100/total):0;
+    const box=document.createElement("div");box.className="result";
+    const top=document.createElement("div");top.className="rtop";
+    const n=document.createElement("span");n.textContent=(i+1)+". "+r.candidate_name;
+    const count=document.createElement("span");count.textContent=`${r.vote_count} वोट (${pct.toFixed(1)}%)`;
+    const track=document.createElement("div");track.className="track";
+    const bar=document.createElement("div");bar.className="bar";bar.style.width=pct+"%";bar.style.background=colors[i%4];
+    track.append(bar);top.append(n,count);box.append(top,track);$("resultsList").append(box);
+  });
+}
+async function checkVoteState(){
+  if(!currentUser){$("votePanel").classList.add("hidden");return;}
+  $("votePanel").classList.remove("hidden");
+  const {data,error}=await supabase.from("votes").select("id").eq("user_id",currentUser.id).maybeSingle();
+  if(error){status("voteStatus","वोट की स्थिति जाँच नहीं पाए: "+error.message,true);return;}
+  if(data){$("castVote").disabled=true;status("voteStatus","आपका वोट पहले ही दर्ज हो चुका है। धन्यवाद!");}
+  else{$("castVote").disabled=false;status("voteStatus","आपका वोट अभी दर्ज नहीं हुआ है।");}
+}
+$("saveConfig").addEventListener("click",()=>{
+  try{connect($("projectUrl").value,$("publicKey").value);status("configStatus","");}
+  catch(e){status("configStatus",e.message,true);}
+});
+$("sendOtp").addEventListener("click",async()=>{
+  if(!supabase)return status("authStatus","पहले डेटाबेस कनेक्ट करें।",true);
+  const phone=$("phone").value.trim();
+  if(!/^\+[1-9]\d{7,14}$/.test(phone))return status("authStatus","नंबर country code सहित लिखें, जैसे +919876543210।",true);
+  status("authStatus","OTP भेजा जा रहा है…");
+  const {error}=await supabase.auth.signInWithOtp({phone});
+  status("authStatus",error?error.message:"OTP भेज दिया गया है। SMS में आया कोड दर्ज करें।",!!error);
+});
+$("verifyOtp").addEventListener("click",async()=>{
+  const phone=$("phone").value.trim(),token=$("otp").value.trim();
+  if(!token)return status("authStatus","OTP दर्ज करें।",true);
+  const {data,error}=await supabase.auth.verifyOtp({phone,token,type:"sms"});
+  if(error)return status("authStatus",error.message,true);
+  currentUser=data.user;status("authStatus","मोबाइल सत्यापित हो गया।");
+  await checkVoteState();
+});
+$("signOut").addEventListener("click",async()=>{if(supabase)await supabase.auth.signOut();currentUser=null;$("votePanel").classList.add("hidden");status("authStatus","लॉग आउट हो गया।");});
+$("castVote").addEventListener("click",async()=>{
+  if(!currentUser)return status("voteStatus","पहले OTP सत्यापित करें।",true);
+  if(!selectedCandidate)return status("voteStatus","पहले एक प्रत्याशी चुनें।",true);
+  $("castVote").disabled=true;status("voteStatus","वोट जमा हो रहा है…");
+  const {error}=await supabase.rpc("cast_vote",{candidate_id_input:selectedCandidate});
+  if(error){status("voteStatus",error.message.includes("already voted")?"आपका वोट पहले ही दर्ज हो चुका है।":("वोट जमा नहीं हुआ: "+error.message),true);$("castVote").disabled=false;return;}
+  status("voteStatus","आपका वोट सुरक्षित रूप से दर्ज हो गया। धन्यवाद!");
+  document.querySelectorAll('input[name="candidate"]').forEach(x=>x.disabled=true);
+  await refreshResults();await checkVoteState();
+});
+$("shareWhatsApp").addEventListener("click",()=>{
+  const url=location.href;const msg="ग्राम पंचायत जन पोल में अपनी राय दें: "+url;
+  window.open("https://wa.me/?text="+encodeURIComponent(msg),"_blank","noopener");
+});
+$("copyLink").addEventListener("click",async()=>{
+  try{await navigator.clipboard.writeText(location.href);status("shareStatus","लिंक कॉपी हो गया।");}
+  catch{status("shareStatus","इस ब्राउज़र में कॉपी नहीं हुआ। एड्रेस बार से लिंक कॉपी करें।",true);}
+});
+const cfg=savedConfig();$("projectUrl").value=cfg.url;$("publicKey").value=cfg.key;
+if(cfg.url&&cfg.key){try{connect(cfg.url,cfg.key);}catch(e){status("configStatus",e.message,true);}}
+setInterval(refreshResults,15000);
+</script>
+</body>
+</html>
